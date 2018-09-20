@@ -43,6 +43,7 @@ public class LicensesDialogFragment extends DialogFragment {
     private static final String ARGUMENT_DIVIDER_COLOR = "ARGUMENT_DIVIDER_COLOR";
     private static final String ARGUMENT_USE_APPCOMPAT = "ARGUMENT_USE_APPCOMPAT";
     private static final String ARGUMENT_NOTICE_STYLE = "ARGUMENT_NOTICE_STYLE";
+    private static final String ARGUMENT_NOTICE_NIGHT_STYLE = "ARGUMENT_NOTICE_NIGHT_STYLE";
     private static final String STATE_TITLE_TEXT = "title_text";
     private static final String STATE_LICENSES_TEXT = "licenses_text";
     private static final String STATE_CLOSE_TEXT = "close_text";
@@ -53,8 +54,10 @@ public class LicensesDialogFragment extends DialogFragment {
     private String mTitleText;
     private String mCloseButtonText;
     private String mLicensesText;
+    private String mLicensesNightText;
     private int mThemeResourceId;
     private int mDividerColor;
+    private LicensesDialog mLicensesDialog;
 
     private DialogInterface.OnDismissListener mOnDismissListener;
 
@@ -66,6 +69,7 @@ public class LicensesDialogFragment extends DialogFragment {
                                                       final boolean showFullLicenseText,
                                                       final boolean includeOwnLicense,
                                                       final String noticeStyle,
+                                                      final String noticeNightStyle,
                                                       final int themeResourceId,
                                                       final int dividerColor,
                                                       final boolean useAppCompat) {
@@ -75,6 +79,7 @@ public class LicensesDialogFragment extends DialogFragment {
         args.putBoolean(ARGUMENT_FULL_LICENSE_TEXT, showFullLicenseText);
         args.putBoolean(ARGUMENT_INCLUDE_OWN_LICENSE, includeOwnLicense);
         args.putString(ARGUMENT_NOTICE_STYLE, noticeStyle);
+        args.putString(ARGUMENT_NOTICE_NIGHT_STYLE, noticeNightStyle);
         args.putInt(ARGUMENT_THEME_XML_ID, themeResourceId);
         args.putInt(ARGUMENT_DIVIDER_COLOR, dividerColor);
         args.putBoolean(ARGUMENT_USE_APPCOMPAT, useAppCompat);
@@ -86,6 +91,7 @@ public class LicensesDialogFragment extends DialogFragment {
                                                       final boolean showFullLicenseText,
                                                       final boolean includeOwnLicense,
                                                       final String noticeStyle,
+                                                      final String noticeNightStyle,
                                                       final int themeResourceId,
                                                       final int dividerColor,
                                                       final boolean useAppCompat) {
@@ -95,6 +101,7 @@ public class LicensesDialogFragment extends DialogFragment {
         args.putBoolean(ARGUMENT_FULL_LICENSE_TEXT, showFullLicenseText);
         args.putBoolean(ARGUMENT_INCLUDE_OWN_LICENSE, includeOwnLicense);
         args.putString(ARGUMENT_NOTICE_STYLE, noticeStyle);
+        args.putString(ARGUMENT_NOTICE_NIGHT_STYLE, noticeNightStyle);
         args.putInt(ARGUMENT_THEME_XML_ID, themeResourceId);
         args.putInt(ARGUMENT_DIVIDER_COLOR, dividerColor);
         args.putBoolean(ARGUMENT_USE_APPCOMPAT, useAppCompat);
@@ -164,7 +171,11 @@ public class LicensesDialogFragment extends DialogFragment {
                     if (noticeStyle == null) {
                         noticeStyle = resources.getString(R.string.notices_default_style);
                     }
+                    String noticeNightStyle = arguments.getString(ARGUMENT_NOTICE_NIGHT_STYLE);
                     mLicensesText = NoticesHtmlBuilder.create(getActivity()).setNotices(notices).setShowFullLicenseText(showFullLicenseText).setStyle(noticeStyle).build();
+                    if (noticeNightStyle != null) {
+                        mLicensesNightText = NoticesHtmlBuilder.create(getActivity()).setNotices(notices).setShowFullLicenseText(showFullLicenseText).setStyle(noticeNightStyle).build();
+                    }
                 } else {
                     throw new IllegalStateException("Missing arguments");
                 }
@@ -192,9 +203,11 @@ public class LicensesDialogFragment extends DialogFragment {
     public Dialog onCreateDialog(final Bundle savedInstanceState) {
         final LicensesDialog.Builder builder = new LicensesDialog.Builder(getActivity())
             .setNotices(mLicensesText)
+            .setNightNotices(mLicensesNightText)
             .setTitle(mTitleText).setCloseText(mCloseButtonText)
             .setThemeResourceId(mThemeResourceId).setDividerColor(mDividerColor);
         final LicensesDialog licensesDialog = builder.build();
+        mLicensesDialog = licensesDialog;
         if (getArguments().getBoolean(ARGUMENT_USE_APPCOMPAT, false)) {
             return licensesDialog.createAppCompat();
         } else {
@@ -220,6 +233,10 @@ public class LicensesDialogFragment extends DialogFragment {
 
     public void setOnDismissListener(final DialogInterface.OnDismissListener onDismissListener) {
         mOnDismissListener = onDismissListener;
+    }
+
+    public LicensesDialog getLicensesDialog() {
+        return mLicensesDialog;
     }
 
     // ==========================================================================================================================
@@ -251,6 +268,7 @@ public class LicensesDialogFragment extends DialogFragment {
         private boolean mShowFullLicenseText;
         private boolean mIncludeOwnLicense;
         private String mNoticesStyle;
+        private String mNoticesNightStyle;
         private int mThemeResourceId;
         private int mDividerColor;
         private boolean mUseAppCompat;
@@ -310,6 +328,11 @@ public class LicensesDialogFragment extends DialogFragment {
             return this;
         }
 
+        public Builder setNoticesNightCssStyle(final String cssStyleText) {
+            mNoticesNightStyle = cssStyleText;
+            return this;
+        }
+
         public Builder setThemeResourceId(@StyleRes final int themeResourceId) {
             mThemeResourceId = themeResourceId;
             return this;
@@ -332,9 +355,9 @@ public class LicensesDialogFragment extends DialogFragment {
 
         public LicensesDialogFragment build() {
             if (mNotices != null) {
-                return newInstance(mNotices, mShowFullLicenseText, mIncludeOwnLicense, mNoticesStyle, mThemeResourceId, mDividerColor, mUseAppCompat);
+                return newInstance(mNotices, mShowFullLicenseText, mIncludeOwnLicense, mNoticesStyle, mNoticesNightStyle, mThemeResourceId, mDividerColor, mUseAppCompat);
             } else if (mRawNoticesResourceId != null) {
-                return newInstance(mRawNoticesResourceId, mShowFullLicenseText, mIncludeOwnLicense, mNoticesStyle, mThemeResourceId, mDividerColor, mUseAppCompat);
+                return newInstance(mRawNoticesResourceId, mShowFullLicenseText, mIncludeOwnLicense, mNoticesNightStyle, mNoticesStyle, mThemeResourceId, mDividerColor, mUseAppCompat);
             } else {
                 throw new IllegalStateException("Required parameter not set. You need to call setNotices.");
             }
