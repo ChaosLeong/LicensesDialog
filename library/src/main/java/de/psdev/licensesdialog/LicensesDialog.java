@@ -18,8 +18,6 @@ package de.psdev.licensesdialog;
 
 import java.util.List;
 
-import javax.annotation.Nullable;
-
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
@@ -28,10 +26,12 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.os.Message;
+import android.support.annotation.Nullable;
 import android.view.ContextThemeWrapper;
 import android.view.View;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
+
 import de.psdev.licensesdialog.licenses.ApacheSoftwareLicense20;
 import de.psdev.licensesdialog.model.Notice;
 import de.psdev.licensesdialog.model.Notices;
@@ -44,22 +44,26 @@ public class LicensesDialog {
     private final Context mContext;
     private final String mTitleText;
     private final String mLicensesText;
+    private final String mLicensesNightText;
     private final String mCloseText;
     private final int mThemeResourceId;
     private final int mDividerColor;
 
     private DialogInterface.OnDismissListener mOnDismissListener;
 
+    private WebView mWebView;
+
     // ==========================================================================================================================
     // Constructor
     // ==========================================================================================================================
 
-    private LicensesDialog(final Context context, final String licensesText, final String titleText, final String closeText,
+    private LicensesDialog(final Context context, final String licensesText, final String licensesNightText, final String titleText, final String closeText,
                            final int themeResourceId,
                            final int dividerColor) {
         mContext = context;
         mTitleText = titleText;
         mLicensesText = licensesText;
+        mLicensesNightText = licensesNightText;
         mCloseText = closeText;
         mThemeResourceId = themeResourceId;
         mDividerColor = dividerColor;
@@ -91,6 +95,7 @@ public class LicensesDialog {
                     dialogInterface.dismiss();
                 }
             });
+        mWebView = webView;
         final AlertDialog dialog = builder.create();
         dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
             @Override
@@ -133,6 +138,7 @@ public class LicensesDialog {
                     dialogInterface.dismiss();
                 }
             });
+        mWebView = webView;
         final android.support.v7.app.AlertDialog dialog = builder.create();
         dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
             @Override
@@ -168,6 +174,13 @@ public class LicensesDialog {
         final Dialog dialog = createAppCompat();
         dialog.show();
         return dialog;
+    }
+
+    public void switchToNight(final boolean isNight) {
+        if (mLicensesNightText == null || mWebView == null) {
+            return;
+        }
+        mWebView.loadDataWithBaseURL(null, isNight ? mLicensesNightText : mLicensesText, "text/html", "utf-8", null);
     }
 
     // ==========================================================================================================================
@@ -242,7 +255,11 @@ public class LicensesDialog {
         private Notices mNotices;
         @Nullable
         private String mNoticesText;
+        @Nullable
+        private String mNoticesNightText;
         private String mNoticesStyle;
+        @Nullable
+        private String mNoticesNightStyle;
         private boolean mShowFullLicenseText;
         private boolean mIncludeOwnLicense;
         private int mThemeResourceId;
@@ -302,6 +319,11 @@ public class LicensesDialog {
             return this;
         }
 
+        Builder setNightNotices(final String notices) {
+            mNoticesNightText = notices;
+            return this;
+        }
+
         public Builder setNoticesCssStyle(final int cssStyleTextId) {
             mNoticesStyle = mContext.getString(cssStyleTextId);
             return this;
@@ -309,6 +331,16 @@ public class LicensesDialog {
 
         public Builder setNoticesCssStyle(final String cssStyleText) {
             mNoticesStyle = cssStyleText;
+            return this;
+        }
+
+        public Builder setNoticesNightCssStyle(final int cssStyleTextId) {
+            mNoticesNightStyle = mContext.getString(cssStyleTextId);
+            return this;
+        }
+
+        public Builder setNoticesNightCssStyle(final String cssStyleText) {
+            mNoticesNightStyle = cssStyleText;
             return this;
         }
 
@@ -339,18 +371,23 @@ public class LicensesDialog {
 
         public LicensesDialog build() {
             final String licensesText;
+            final String licensesNightText;
             if (mNotices != null) {
                 licensesText = getLicensesText(mContext, mNotices, mShowFullLicenseText, mIncludeOwnLicense, mNoticesStyle);
+                licensesNightText = getLicensesText(mContext, mNotices, mShowFullLicenseText, mIncludeOwnLicense, mNoticesNightStyle);
             } else if (mRawNoticesId != null) {
                 licensesText = getLicensesText(mContext, getNotices(mContext, mRawNoticesId), mShowFullLicenseText, mIncludeOwnLicense,
-                    mNoticesStyle);
+                        mNoticesStyle);
+                licensesNightText = getLicensesText(mContext, getNotices(mContext, mRawNoticesId), mShowFullLicenseText, mIncludeOwnLicense,
+                        mNoticesNightStyle);
             } else if (mNoticesText != null) {
                 licensesText = mNoticesText;
+                licensesNightText = mNoticesNightText;
             } else {
                 throw new IllegalStateException("Notices have to be provided, see setNotices");
             }
 
-            return new LicensesDialog(mContext, licensesText, mTitleText, mCloseText, mThemeResourceId, mDividerColor);
+            return new LicensesDialog(mContext, licensesText, licensesNightText, mTitleText, mCloseText, mThemeResourceId, mDividerColor);
         }
 
     }
