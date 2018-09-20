@@ -18,20 +18,22 @@ package de.psdev.licensesdialog;
 
 import java.util.List;
 
-import javax.annotation.Nullable;
-
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Message;
+import android.os.ParcelUuid;
+import android.support.annotation.Nullable;
 import android.view.ContextThemeWrapper;
 import android.view.View;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
+
 import de.psdev.licensesdialog.licenses.ApacheSoftwareLicense20;
 import de.psdev.licensesdialog.model.Notice;
 import de.psdev.licensesdialog.model.Notices;
@@ -44,22 +46,28 @@ public class LicensesDialog {
     private final Context mContext;
     private final String mTitleText;
     private final String mLicensesText;
+    private final String mLicensesNightText;
+    private boolean isNightText;
     private final String mCloseText;
     private final int mThemeResourceId;
     private final int mDividerColor;
 
     private DialogInterface.OnDismissListener mOnDismissListener;
 
+    private WebView mWebView;
+
     // ==========================================================================================================================
     // Constructor
     // ==========================================================================================================================
 
-    private LicensesDialog(final Context context, final String licensesText, final String titleText, final String closeText,
+    private LicensesDialog(final Context context, final String licensesText, final String licensesNightText, final boolean isNight, final String titleText, final String closeText,
                            final int themeResourceId,
                            final int dividerColor) {
         mContext = context;
         mTitleText = titleText;
         mLicensesText = licensesText;
+        mLicensesNightText = licensesNightText;
+        isNightText = isNight;
         mCloseText = closeText;
         mThemeResourceId = themeResourceId;
         mDividerColor = dividerColor;
@@ -76,8 +84,8 @@ public class LicensesDialog {
 
     public Dialog create() {
         //Get resources
-        final WebView webView = createWebView(mContext);
-        webView.loadDataWithBaseURL(null, mLicensesText, "text/html", "utf-8", null);
+        mWebView = createWebView(mContext);
+        switchToNight(isNightText);
         final AlertDialog.Builder builder;
         if (mThemeResourceId != 0) {
             builder = new AlertDialog.Builder(new ContextThemeWrapper(mContext, mThemeResourceId));
@@ -85,7 +93,7 @@ public class LicensesDialog {
             builder = new AlertDialog.Builder(mContext);
         }
         builder.setTitle(mTitleText)
-            .setView(webView)
+            .setView(mWebView)
             .setPositiveButton(mCloseText, new Dialog.OnClickListener() {
                 public void onClick(final DialogInterface dialogInterface, final int i) {
                     dialogInterface.dismiss();
@@ -118,8 +126,9 @@ public class LicensesDialog {
 
     public Dialog createAppCompat() {
         //Get resources
-        final WebView webView = new WebView(mContext);
-        webView.loadDataWithBaseURL(null, mLicensesText, "text/html", "utf-8", null);
+        mWebView = new WebView(mContext);
+        mWebView.setBackgroundColor(Color.TRANSPARENT);
+        switchToNight(isNightText);
         final android.support.v7.app.AlertDialog.Builder builder;
         if (mThemeResourceId != 0) {
             builder = new android.support.v7.app.AlertDialog.Builder(new ContextThemeWrapper(mContext, mThemeResourceId));
@@ -127,7 +136,7 @@ public class LicensesDialog {
             builder = new android.support.v7.app.AlertDialog.Builder(mContext);
         }
         builder.setTitle(mTitleText)
-            .setView(webView)
+            .setView(mWebView)
             .setPositiveButton(mCloseText, new Dialog.OnClickListener() {
                 public void onClick(final DialogInterface dialogInterface, final int i) {
                     dialogInterface.dismiss();
@@ -170,6 +179,16 @@ public class LicensesDialog {
         return dialog;
     }
 
+    public void switchToNight(final boolean isNight) {
+        if (mWebView == null) {
+            return;
+        }
+        if (isNight && mLicensesNightText == null) {
+            return;
+        }
+        mWebView.loadDataWithBaseURL(null, isNight ? mLicensesNightText : mLicensesText, "text/html", "utf-8", null);
+    }
+
     // ==========================================================================================================================
     // Private API
     // ==========================================================================================================================
@@ -177,6 +196,7 @@ public class LicensesDialog {
     private static WebView createWebView(final Context context) {
         final WebView webView = new WebView(context);
         webView.getSettings().setSupportMultipleWindows(true);
+        webView.setBackgroundColor(Color.TRANSPARENT);
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onCreateWindow(final WebView view, final boolean isDialog, final boolean isUserGesture, final Message resultMsg) {
@@ -242,7 +262,12 @@ public class LicensesDialog {
         private Notices mNotices;
         @Nullable
         private String mNoticesText;
+        @Nullable
+        private String mNoticesNightText;
         private String mNoticesStyle;
+        @Nullable
+        private String mNoticesNightStyle;
+        private boolean isNightText;
         private boolean mShowFullLicenseText;
         private boolean mIncludeOwnLicense;
         private int mThemeResourceId;
@@ -302,6 +327,16 @@ public class LicensesDialog {
             return this;
         }
 
+        Builder setNightNotices(final String notices) {
+            mNoticesNightText = notices;
+            return this;
+        }
+
+        public Builder setIsNight(final boolean isNight) {
+            isNightText = isNight;
+            return this;
+        }
+
         public Builder setNoticesCssStyle(final int cssStyleTextId) {
             mNoticesStyle = mContext.getString(cssStyleTextId);
             return this;
@@ -309,6 +344,16 @@ public class LicensesDialog {
 
         public Builder setNoticesCssStyle(final String cssStyleText) {
             mNoticesStyle = cssStyleText;
+            return this;
+        }
+
+        public Builder setNoticesNightCssStyle(final int cssStyleTextId) {
+            mNoticesNightStyle = mContext.getString(cssStyleTextId);
+            return this;
+        }
+
+        public Builder setNoticesNightCssStyle(final String cssStyleText) {
+            mNoticesNightStyle = cssStyleText;
             return this;
         }
 
@@ -339,18 +384,23 @@ public class LicensesDialog {
 
         public LicensesDialog build() {
             final String licensesText;
+            final String licensesNightText;
             if (mNotices != null) {
                 licensesText = getLicensesText(mContext, mNotices, mShowFullLicenseText, mIncludeOwnLicense, mNoticesStyle);
+                licensesNightText = getLicensesText(mContext, mNotices, mShowFullLicenseText, mIncludeOwnLicense, mNoticesNightStyle);
             } else if (mRawNoticesId != null) {
                 licensesText = getLicensesText(mContext, getNotices(mContext, mRawNoticesId), mShowFullLicenseText, mIncludeOwnLicense,
-                    mNoticesStyle);
+                        mNoticesStyle);
+                licensesNightText = getLicensesText(mContext, getNotices(mContext, mRawNoticesId), mShowFullLicenseText, mIncludeOwnLicense,
+                        mNoticesNightStyle);
             } else if (mNoticesText != null) {
                 licensesText = mNoticesText;
+                licensesNightText = mNoticesNightText;
             } else {
                 throw new IllegalStateException("Notices have to be provided, see setNotices");
             }
 
-            return new LicensesDialog(mContext, licensesText, mTitleText, mCloseText, mThemeResourceId, mDividerColor);
+            return new LicensesDialog(mContext, licensesText, licensesNightText, isNightText, mTitleText, mCloseText, mThemeResourceId, mDividerColor);
         }
 
     }
